@@ -1,0 +1,128 @@
+
+
+Parallel and Concurrent Programming with Python: Part 1
+
+Purpose of the course: how to write concurrent and parallel programming.
+
+Section 1: Parallel Computing Hardware
+- What it means: computer program has a list of instructions that the computer executes
+- Why parallelism is important: speed. Serial execution executes instructions one instruction at a time. Limited by the speed of the processor."2 cooks in the kitchen allows more to happen at once"
+--> parallelism is fast, but it does add complexity because the cooks need to coordinate who does what, but it is worth the time.
+
+Parallel computing architectures:
+- Flynn's Taxonomy: 
+	- distinguishes 4 classes of comp architecture based on: # data streams, # instruction streams (control streams)
+	- SISD(Single instruction single data), MISD (Multiple instructions, single data), SIMD, MIMD
+- The different classes:
+	- SISD: single instruction single data is when an instruction operates on a single piece of data (one person cutting up a carrot)
+	- MISD: multiple instructions single data is when multiple instructions operate on a single piece of data at any given moment (2 people cutting and peeling up a carrot --- not very practical)
+	- SIMD: single instruction multiple data has multiple processing units that execute the same instruction on different data elements (2 people cutting two different vegetables)
+		- This architecture is used for GPUs
+	- MIMD: multiple instructions multiple data each processor executes multiple instructions on separate pieces of data. It is the most commonly used architecture in Flynn's taxonomy
+		- SPMD: Single program, multiple data --- multiple processors are executing the same copy of a program simultaneously and can each use *different data* --- processors run asynchronously: this is the most common
+		- MPMD: Multiple programs, multiple data ---- processing execute different programs at the same time. One processor is the host. This is not as common
+Shared vs distributed memory:
+	- Shared: processors have access to the same memory with global address space
+		- Uniform memory access: each processor can access data equally as fast: Symmetric Multiprocessing has 2 or more identical processors connected to a single shared memory (what we are looking at), each processor has its own cache --- cache coherency is important
+		- Non Uniform Memory Access: multiple SMP systems are connected together
+		- Shared memory is easy to program, but can get complicated. Memory accesses are controlled by the programmer.
+	- Distributed Memory Architecture: each process has its own memory. Global address space doesn't exist. Up to the processor to communicate happens to their data. There is also an increase in memory.
+This course: here we do everything with shared memory with Symmetric Multiprocessing
+
+Thread vs Process:
+	- Process: code, data, and info about its state. Each process is independent and has its own separate address space and memory. Every process has subunits called threads
+	- Thread: independent path of execution through prgram, subset of a process, OS schedules threads for execution
+		- Best way to think about it: imagine 2 cooks in the kitchen making the same recipe. Both threads work independently that contribute to the overall execution of the program.
+	- Threads have access to the same address space - execution code and data
+	- you can communicate and share resources between processes as well
+	- Multiple processors or multiple threads? Depends on the application. 
+		- If it is a distributed system that requires separate computers, then separate processes are needed for that. 
+		- Stick with multithreading over multi-processing for light-weight applications. 
+		- A thread requires less overhead (memory) to create and terminate than a process and it's usually faster for an OS to switch between threads. 
+Concurrency vs Parallelism:
+	- Concurrency: Program can be broken into parts that can run independently of each other. It is about how a program is structured and the composition of independent processes. They are order independent.
+		- Single core processor example: they are both running concurrently because two independent processes overlap in time. Example: 2 cooks cutting 2 different vegetables but sharing a knife, cutting some parts at a time and sharing the knife
+		- for there to be *parallelism* the execution time has to actually go down where at any given time they are executing their threads at the same time
+	- Parallel hardware: GPUs, multi-core processors, computer clusters
+Concurrent programming is useful for memory-mapped I/O. Parallel programming is useful for matrix multiplication.
+
+Global interpreter lock: Python demo (see demo)
+Using threads to handle concurrent tasks in python, but they cannot execute simultaneously and in parallel because of the global interpreter lock.
+GIL: prevents multiple Python threads to happen at the same time. 
+source code --> interpreter: compiler, bytecode, virtual machine that takes library modules --> output
+Default GIL: CPython, safe memory management
+
+To thread or not to thread?
+	- I/O bound: GIL is not a bottle neck, use python threading module
+	- CPU bound: GIL negatively impacts performance, multiprocessing package (communication between processes is hard)
+
+Execution Scheduling:
+- OS function that assigns processes and threads to run on available CPUs
+- schedules processes depending on resources available
+- context switch: storing the state of a process or thread to resume later, loading the saves state for the new process or thread to run
+- context switches take time to callee/caller save registers and memory state
+
+Scheduling algorithms:
+- first come, first serve
+- shortest job next
+- shortest remaining time
+- round robin
+- multiple level queues
+
+Scheduling goals:
+- maximize throughput
+- maximize fairness
+- minimize wait time
+- minimize latency
+
+Scheduling is not the same every time a program is run.
+
+For creating new threads: you create a thread, tell it what to do, and when to start
+When a thread is waiting, it lets go of a resource for another thread to execute.
+
+Daemon Thread:
+- does not prevent process from terminating
+- threads are created as non-daemon
+- new threads will inherit deamon status from their parent
+- set daemon property to change status before starting thread
+- a deamon thread will be abruptly terminated when the main thread finishes. If that occurs during a write operation, the file could be corrupted.
+
+Data Race:
+- Problem: 2 or more concurrent threads access the same memory location and at least one thread is modifying it.
+- Mutual exclusion:
+	- mutex is a mechanism to implement mutual exclusion
+	- only one thread or process can posess at a given time
+	- limits access to critical section, forcing threads to take turns
+	- Atomic operations: cannot be interrupted by other concurrent threads. Execute as a single action, relative to other threads
+	- Acquiring a lock: if a lock is taken, block/wait for it to be available
+	- mutex should be released when you are done
+- Preventing data races: pay attention whenever two or more threads access the same resource
+Critical section: code segment that accesses a shared resource, should not be executed by more than one thread or process at the same time
+
+Reentrant lock:
+- Problem (without reentrant lock): If a thread tries to lock a mutex that is already locked, it will enter into a waiting list for that mutex (resulting in deadlock)
+- Can be locked multiple times by the same thread
+- must be unlocked as many times as it was locked
+- useful for recursion
+- Lock can be released by a different thread than was used to acquire it
+- Reentrant lock must be released by the same thread that acquired it
+	- must be released the same number of times
+- DON'T spread locking and unlocking across threads
+
+Try lock:
+- non-blocking lock method for mutex
+- if mutex is available, lock it and return TRUE
+- if mutex is unavailable, immediately return FALSE
+
+Read-write lock: multiple threads can read a mutex at the same time which isn't a problem. When one thread *writes* however, it becomes a problem. So, we lock it so that one thread is reading or writing at a time if they have the mutex.
+- Shared read: multiple threads at once
+- exclusive write: only one thread at a time (only if not locked by a thread that is reading)
+- # threads reading > # threads writing
+
+Deadlock: deadlock does not take up CPU cycles, each member is waiting for another member to take action. Solution - have both try to acquire the same mutex
+Liveness: properties that require a system to make progress. members have to "take turns" in critical sections
+
+Abandoned Lock: a lock gets abandoned because a thread terminates or crashes --- solution: use a try block and a finally block
+
+Starvation: thread is perpetually denied the resources it needs
+Livelock: 2 threads block each other by actively responding to resolve conflict. The problem is, that prevents them from making progress. CPU utilization goes up but does not do anything
